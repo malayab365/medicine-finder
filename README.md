@@ -5,7 +5,8 @@ Web app to look up medicines by name or describe symptoms and get candidate sugg
 ## Features
 
 - **Name search** — normalizes the query via NIH RxNorm (handles brand/generic and misspellings), then shows the OpenFDA label (uses, dosage, warnings, side effects) plus the most-reported FDA adverse events.
-- **Symptom search** — an LLM proposes candidate over-the-counter medicines; their details are re-fetched from OpenFDA so displayed facts come from authoritative data, not the model. A hard-coded emergency check short-circuits before any LLM call, and every response carries a "not medical advice" disclaimer.
+- **Symptom search** *(login required)* — an LLM proposes candidate over-the-counter medicines; their details are re-fetched from OpenFDA so displayed facts come from authoritative data, not the model. A hard-coded emergency check short-circuits before any LLM call, and every response carries a "not medical advice" disclaimer.
+- **Accounts** — open self-signup with username + password (hashed with stdlib `scrypt`), stored in a local SQLite file. Symptom search is gated behind a signed-cookie session; name search stays public.
 - Per-IP rate limiting (stricter on the symptom endpoint, which calls a paid LLM), in-memory caching, and `robots.txt` blocking indexing.
 
 > Informational only — not medical advice.
@@ -34,10 +35,12 @@ uvicorn app.main:app --reload
 
 ## Configuration
 
-Settings load from `.env` via `pydantic-settings` (see `app/config.py`). Only
-`OPENROUTER_API_KEY` is required; `OPENROUTER_MODEL`, `OPENROUTER_BASE_URL`, the
-API base URLs, and `NAME_RATE_LIMIT_PER_MINUTE` / `SYMPTOM_RATE_LIMIT_PER_MINUTE`
-have defaults. Full table in [DEPLOY.md](DEPLOY.md).
+Settings load from `.env` via `pydantic-settings` (see `app/config.py`).
+`OPENROUTER_API_KEY` is required for symptom search, and `SESSION_SECRET` should
+be set to a long random string in any non-local deployment (it signs the login
+cookie). `OPENROUTER_MODEL`, `OPENROUTER_BASE_URL`, `DATABASE_PATH` (SQLite file
+for accounts), the API base URLs, and `NAME_RATE_LIMIT_PER_MINUTE` /
+`SYMPTOM_RATE_LIMIT_PER_MINUTE` have defaults. Full table in [DEPLOY.md](DEPLOY.md).
 
 ## Test
 

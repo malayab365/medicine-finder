@@ -96,9 +96,24 @@ OpenFDA and RxNorm require no auth. Name search works without an API key; only s
 | `GET` | `/` | none | none | Render search page |
 | `GET` | `/healthz` | none | none | Health check → `{"status": "ok"}` |
 | `GET` | `/robots.txt` | none | none | `Disallow: /` (blocks indexing in v1) |
+| `GET`/`POST` | `/register` | none | none | Self-signup (form) |
+| `GET`/`POST` | `/login` | none | none | Login (form) |
+| `POST` | `/logout` | none | none | Clear session |
 | `POST` | `/search/name` | none | name limiter | Name lookup |
-| `POST` | `/search/symptom` | none | symptom limiter | Symptom triage |
+| `POST` | `/search/symptom` | **login** | symptom limiter | Symptom triage (401 if anonymous) |
 | static | `/static/*` | none | none | `app.js`, `style.css` |
+
+### 5.0 Authentication
+
+Symptom search is gated behind a user account; name search is public. Accounts are
+open self-signup (username + password). Passwords are hashed with stdlib
+`hashlib.scrypt` (per-user random salt) in `app/auth.py`; users are stored in a
+local SQLite file (`app/db.py`, stdlib `sqlite3`, path `DATABASE_PATH`, schema
+created on startup via the FastAPI lifespan). Sessions are **signed cookies** via
+Starlette `SessionMiddleware` (signed by `SESSION_SECRET`); only `user_id` is held
+in the session and the user is reloaded per request. `Depends(auth.require_user)`
+on `/search/symptom` returns **401** when anonymous; the frontend hides the symptom
+form when logged out and `app.js` handles the 401 with a login prompt.
 
 ### 5.1 `POST /search/name`
 

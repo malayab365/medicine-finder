@@ -1,10 +1,13 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 
+from app import auth, db
 from app.config import settings
 from app.ratelimit import FixedWindowRateLimiter
 from app.schemas import (
@@ -21,7 +24,15 @@ from app.services.triage import is_emergency, triage
 
 BASE_DIR = Path(__file__).resolve().parent
 
-app = FastAPI(title="Medicine Search", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db.init_db()
+    yield
+
+
+app = FastAPI(title="Medicine Search", version="0.1.0", lifespan=lifespan)
+app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
@@ -56,7 +67,78 @@ async def robots() -> str:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "index.html")
+    user = auth.current_user(request)
+    return templates.TemplateResponse(request, "index.html", {"user": user})
+
+
+# --- Auth ----------------------------------------------------------------
+
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_form(request: Request) -> HTMLResponse:
+    if auth.current_user(request):
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse(request, "register.html", {"user": None})
+
+
+@app.post("/register")
+async def register(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    confirm: str = Form(...),
+):
+    error = auth.validate_credentials(username, password)
+    if not error and password != confirm:
+        error = "Passwords do not match."
+    if not error:
+        try:
+            user = auth.register_user(username, password)
+        except ValueError as exc:
+            error = str(exc)
+    if error:
+        return templates.TemplateResponse(
+            request,
+            "register.html",
+            {"user": None, "error": error, "username": username},
+            status_code=400,
+        )
+    request.session["user_id"] = user["id"]
+    return RedirectResponse("/", status_code=303)
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_form(request: Request) -> HTMLResponse:
+    if auth.current_user(request):
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse(request, "login.html", {"user": None})
+
+
+@app.post("/login")
+async def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    user = auth.authenticate(username, password)
+    if user is None:
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {"user": None, "error": "Invalid username or password.", "username": username},
+            status_code=400,
+        )
+    request.session["user_id"] = user["id"]
+    return RedirectResponse("/", status_code=303)
+
+
+@app.post("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/", status_code=303)
+
+
+# --- Search --------------------------------------------------------------
 
 
 @app.post(
@@ -82,7 +164,7 @@ async def search_name(req: NameSearchRequest) -> NameSearchResponse:
 @app.post(
     "/search/symptom",
     response_model=SymptomSearchResponse,
-    dependencies=[Depends(rate_limit(symptom_limiter))],
+    dependencies=[Depends(rate_limit(symptom_limiter)), Depends(auth.require_user)],
 )
 async def search_symptom(req: SymptomSearchRequest) -> SymptomSearchResponse:
     # Hard-coded emergency check runs before any LLM call.

@@ -142,6 +142,31 @@ Response shape (sketch):
 
   > **Note (2026-06):** NLM **retired the RxNav drug-interaction API in January 2024**, so the interaction-check idea is no longer viable as specified. If we still want interaction checks, we'd need a different source (e.g. a licensed dataset or DDInter) — treat it as a fresh design question, not a quick stretch task.
 
+- **M6 — User accounts + gated symptom search ✅ (done, 2026-06)**: restrict symptom search behind a login so the paid-LLM endpoint is only reachable by registered users. Name search stays public.
+
+  **Requirements**
+  - Open self-signup with username + password; password-confirm on register.
+  - Symptom search (`POST /search/symptom`) requires a logged-in user → returns `401` when anonymous. Name search unchanged (public).
+  - Sessions persist across restarts; accounts survive restarts/redeploys.
+
+  **Design decisions**
+  - **Storage:** local **SQLite file** via stdlib `sqlite3` (`app/db.py`), schema created on startup through the FastAPI lifespan. Path from `DATABASE_PATH` (default `medicine_search.db`). Chosen over Postgres to keep the no-infra v1 ethos; over in-memory because accounts must survive restarts.
+  - **Sessions:** signed cookie via Starlette `SessionMiddleware` (signed by `SESSION_SECRET`). Only `user_id` is stored in the session; the user is reloaded per request. Natural fit for the server-rendered Jinja2 + form app.
+  - **Password hashing:** stdlib `hashlib.scrypt` with a per-user random salt — no extra crypto dependency, consistent with the hand-rolled cache/rate-limiter.
+  - **Registration policy:** open self-signup (public `/register`).
+
+  **Surface added**
+  - Routes: `GET/POST /register`, `GET/POST /login`, `POST /logout`; templates `register.html`, `login.html`; nav auth state in `base.html`.
+  - `app/auth.py` (hashing, register/login, `current_user`/`require_user` deps) + `app/db.py` (SQLite users table).
+  - Config: `DATABASE_PATH`, `SESSION_SECRET` (must be overridden in prod). New dep: `itsdangerous` (required by `SessionMiddleware`).
+  - Frontend: symptom tab shows a login prompt when logged out; `app.js` handles the `401`.
+
+  **Follow-ups (not in scope yet)**
+  - Email verification / password reset (needs email infra).
+  - Per-user (not just per-IP) rate limiting now that symptom search is authenticated.
+  - Account management (change password, delete account).
+  - Move sessions/accounts to a shared store (Redis/Postgres) if scaling beyond a single host.
+
 ---
 
 ## Open questions

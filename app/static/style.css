@@ -7,9 +7,82 @@ body {
     color: #1a1a1a;
 }
 
+header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
 header h1 a {
     color: inherit;
     text-decoration: none;
+}
+
+.auth-nav {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.auth-nav .auth-user {
+    font-weight: 600;
+}
+
+.inline-form {
+    display: inline;
+    margin: 0;
+}
+
+.linkish {
+    border: none;
+    background: none;
+    padding: 0;
+    color: #2563eb;
+    cursor: pointer;
+    font: inherit;
+}
+
+.linkish:hover {
+    text-decoration: underline;
+}
+
+.auth-page {
+    max-width: 22rem;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 1rem 0;
+}
+
+.auth-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.auth-form input {
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+}
+
+.auth-form button {
+    align-self: flex-start;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+    border: 1px solid #2563eb;
+    background: #2563eb;
+    color: #fff;
+    border-radius: 4px;
 }
 
 footer {
@@ -44,7 +117,7 @@ footer {
 /* The `display` rules below would otherwise override the [hidden] attribute the
    toggle relies on; this higher-specificity rule keeps hidden forms hidden. */
 #name-search[hidden],
-#symptom-search[hidden] {
+#symptom-panel[hidden] {
     display: none;
 }
 

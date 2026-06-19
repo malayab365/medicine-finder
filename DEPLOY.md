@@ -1,9 +1,11 @@
 # Deployment
 
-The app is a stateless FastAPI service (no database, in-memory cache only), so it
-runs anywhere that can run a Python ASGI app or a container. Hosting target is still
-an open question (see `planning/plan.md`); the Docker path below works on Fly.io,
-Render, Railway, Cloud Run, or a plain VM.
+The app is a FastAPI service with an in-memory cache and a small **SQLite file for
+user accounts** (symptom search is gated behind login). It runs anywhere that can
+run a Python ASGI app or a container; just give it a writable/persistent path for
+the SQLite file (`DATABASE_PATH`) so accounts survive restarts and redeploys.
+Hosting target is still an open question (see `planning/plan.md`); the Docker path
+below works on Fly.io, Render, Railway, Cloud Run, or a plain VM.
 
 ## Configuration
 
@@ -12,6 +14,8 @@ Set these as environment variables (or a `.env` file — see `.env.example`):
 | Variable | Required | Default | Notes |
 |----------|----------|---------|-------|
 | `OPENROUTER_API_KEY` | **yes** | — | Secret; needed for symptom search. Set via the host's secrets manager, never commit it. |
+| `SESSION_SECRET` | **prod** | `dev-insecure-change-me` | Signs the login session cookie. Set a long random value (`python -c "import secrets; print(secrets.token_hex(32))"`); keep it stable, or all sessions are invalidated. |
+| `DATABASE_PATH` | no | `medicine_search.db` | SQLite file for user accounts. Point at a persistent volume in production. |
 | `OPENROUTER_MODEL` | no | `openrouter/auto` | Pin a specific model for deterministic suggestions. |
 | `OPENROUTER_BASE_URL` | no | `https://openrouter.ai/api/v1` | |
 | `OPENFDA_BASE_URL` | no | `https://api.fda.gov` | |
@@ -31,8 +35,12 @@ For multiple workers behind a process manager:
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-> Note: the LRU cache is per-process, so each worker keeps its own cache. That's
-> fine at v1 scale; move to Redis (per `plan.md`) if you need a shared cache.
+> Note: the LRU cache and rate-limit counters are per-process, so each worker
+> keeps its own. That's fine at v1 scale; move to Redis (per `plan.md`) if you need
+> them shared. The SQLite accounts DB *is* shared (one file), but SQLite handles
+> only modest write concurrency — fine here, since writes happen only on
+> register/login. Set the same `SESSION_SECRET` across all workers/replicas, or
+> cookies signed by one won't validate on another.
 
 ## Container
 
@@ -61,6 +69,7 @@ fly deploy
 
 - `GET /robots.txt` returns `Disallow: /` to block indexing while in v1.
 - `GET /healthz` returns `{"status": "ok"}` for platform health checks.
-- Rate limiting is **not** built in yet (open question in `plan.md`) — add it
-  (e.g. a reverse-proxy limit or `slowapi`) before any public deploy, since the
-  symptom endpoint calls a paid LLM.
+- Per-IP rate limiting is built in (`app/ratelimit.py`), stricter on the symptom
+  endpoint since it calls a paid LLM. It's per-process and in-memory; front it with
+  a reverse-proxy/Redis limit if you run many workers and need a global cap.
+- Serve over HTTPS in production — the session cookie carries the login.
