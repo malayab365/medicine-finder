@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 import app.main as main
 from app.ratelimit import FixedWindowRateLimiter
+from tests.conftest import register_and_login
 
 client = TestClient(main.app)
 
@@ -36,6 +37,7 @@ def test_symptom_endpoint_returns_429_over_limit(monkeypatch):
 
     monkeypatch.setattr(main, "triage", fake_triage)
     monkeypatch.setattr(main.symptom_limiter, "limit", 2)
+    register_and_login(client)
 
     payloads = {"symptoms": "mild headache"}
     assert client.post("/search/symptom", json=payloads).status_code == 200

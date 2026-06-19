@@ -19,17 +19,26 @@
         <button type="submit">Search</button>
     </form>
 
-    <form id="symptom-search" autocomplete="off" hidden>
-        <textarea
-            id="symptoms"
-            name="symptoms"
-            rows="3"
-            placeholder="e.g. runny nose, sore throat, mild headache"
-            required
-            maxlength="1000"
-        ></textarea>
-        <button type="submit">Find suggestions</button>
-    </form>
+    <div id="symptom-panel" hidden>
+        {% if user %}
+        <form id="symptom-search" autocomplete="off">
+            <textarea
+                id="symptoms"
+                name="symptoms"
+                rows="3"
+                placeholder="e.g. runny nose, sore throat, mild headache"
+                required
+                maxlength="1000"
+            ></textarea>
+            <button type="submit">Find suggestions</button>
+        </form>
+        {% else %}
+        <p class="banner">
+            Symptom search requires an account.
+            <a href="/login">Log in</a> or <a href="/register">create one</a> to continue.
+        </p>
+        {% endif %}
+    </div>
 
     <p id="status" role="status" aria-live="polite"></p>
     <div id="results"></div>

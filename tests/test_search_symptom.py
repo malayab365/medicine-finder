@@ -4,11 +4,19 @@ import app.main as main
 from app.schemas import Label
 from app.services.rxnorm import RxNormMatch
 from app.services.triage import TriageResult
+from tests.conftest import register_and_login
 
 client = TestClient(main.app)
 
 
+def test_symptom_search_requires_login():
+    response = client.post("/search/symptom", json={"symptoms": "mild headache"})
+    assert response.status_code == 401
+
+
 def test_emergency_keyword_short_circuits_before_llm(monkeypatch):
+    register_and_login(client)
+
     async def boom(*args, **kwargs):
         raise AssertionError("triage must not be called for emergency input")
 
@@ -26,6 +34,8 @@ def test_emergency_keyword_short_circuits_before_llm(monkeypatch):
 
 
 def test_symptom_search_returns_candidates_with_labels(monkeypatch):
+    register_and_login(client)
+
     async def fake_triage(symptoms, **kwargs):
         return TriageResult(candidates=["acetaminophen"])
 
@@ -53,6 +63,8 @@ def test_symptom_search_returns_candidates_with_labels(monkeypatch):
 
 
 def test_symptom_search_respects_llm_emergency_flag(monkeypatch):
+    register_and_login(client)
+
     async def fake_triage(symptoms, **kwargs):
         return TriageResult(emergency=True)
 
@@ -67,5 +79,6 @@ def test_symptom_search_respects_llm_emergency_flag(monkeypatch):
 
 
 def test_symptom_search_rejects_empty(monkeypatch):
+    register_and_login(client)
     response = client.post("/search/symptom", json={"symptoms": ""})
     assert response.status_code == 422

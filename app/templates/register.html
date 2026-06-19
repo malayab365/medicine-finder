@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Register — Medicine Search{% endblock %}
+
+{% block content %}
+<section class="auth-page">
+    <h2>Create an account</h2>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <form method="post" action="/register" class="auth-form" autocomplete="off">
+        <label>Username
+            <input type="text" name="username" value="{{ username or '' }}" required minlength="3" maxlength="32">
+        </label>
+        <label>Password
+            <input type="password" name="password" required minlength="8" maxlength="128">
+        </label>
+        <label>Confirm password
+            <input type="password" name="confirm" required minlength="8" maxlength="128">
+        </label>
+        <button type="submit">Register</button>
+    </form>
+    <p>Already have an account? <a href="/login">Log in</a>.</p>
+</section>
+{% endblock %}

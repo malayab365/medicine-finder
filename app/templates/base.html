@@ -9,6 +9,17 @@
 <body>
     <header>
         <h1><a href="/">Medicine Search</a></h1>
+        <nav class="auth-nav">
+            {% if user %}
+            <span class="auth-user">{{ user["username"] }}</span>
+            <form method="post" action="/logout" class="inline-form">
+                <button type="submit" class="linkish">Log out</button>
+            </form>
+            {% else %}
+            <a href="/login">Log in</a>
+            <a href="/register">Register</a>
+            {% endif %}
+        </nav>
     </header>
     <main>
         {% block content %}{% endblock %}

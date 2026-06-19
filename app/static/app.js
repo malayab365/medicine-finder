@@ -1,5 +1,6 @@
 const nameForm = document.getElementById("name-search");
-const symptomForm = document.getElementById("symptom-search");
+const symptomPanel = document.getElementById("symptom-panel");
+const symptomForm = document.getElementById("symptom-search"); // null when logged out
 const modeName = document.getElementById("mode-name");
 const modeSymptom = document.getElementById("mode-symptom");
 const statusEl = document.getElementById("status");
@@ -21,7 +22,7 @@ function escapeHtml(text) {
 function setMode(mode) {
   const isName = mode === "name";
   nameForm.hidden = !isName;
-  symptomForm.hidden = isName;
+  symptomPanel.hidden = isName;
   modeName.classList.toggle("active", isName);
   modeSymptom.classList.toggle("active", !isName);
   statusEl.textContent = "";
@@ -107,6 +108,10 @@ async function runSearch(endpoint, body, render, button) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (response.status === 401) {
+      resultsEl.innerHTML = `<div class="error"><strong>Please log in.</strong><br>Symptom search requires an account. <a href="/login">Log in</a> or <a href="/register">register</a>.</div>`;
+      return;
+    }
     if (!response.ok) {
       const detail =
         response.status >= 500
@@ -134,14 +139,16 @@ nameForm.addEventListener("submit", (event) => {
   runSearch("/search/name", { query }, renderNameResult, nameForm.querySelector("button"));
 });
 
-symptomForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const symptoms = document.getElementById("symptoms").value.trim();
-  if (!symptoms) return;
-  runSearch(
-    "/search/symptom",
-    { symptoms },
-    renderSymptomResult,
-    symptomForm.querySelector("button")
-  );
-});
+if (symptomForm) {
+  symptomForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const symptoms = document.getElementById("symptoms").value.trim();
+    if (!symptoms) return;
+    runSearch(
+      "/search/symptom",
+      { symptoms },
+      renderSymptomResult,
+      symptomForm.querySelector("button")
+    );
+  });
+}
