@@ -1,0 +1,9 @@
+{
+  "meta": { "results": { "skip": 0, "limit": 1000, "total": 4 } },
+  "results": [
+    { "term": "NAUSEA", "count": 5321 },
+    { "term": "DRUG INEFFECTIVE", "count": 4102 },
+    { "term": "HEADACHE", "count": 3890 },
+    { "term": "DIZZINESS", "count": 2740 }
+  ]
+}

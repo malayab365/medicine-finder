@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "results": { "skip": 0, "limit": 1, "total": 1 }
+  },
+  "results": [
+    {
+      "indications_and_usage": [
+        "For the temporary relief of minor aches and pains due to headache, muscular aches, minor pain of arthritis, and to reduce fever."
+      ],
+      "dosage_and_administration": [
+        "Adults and children 12 years and over: take 1 tablet every 4 to 6 hours while symptoms persist."
+      ],
+      "warnings": [
+        "Stomach bleeding warning: This product contains an NSAID, which may cause severe stomach bleeding."
+      ],
+      "adverse_reactions": [
+        "May cause nausea, heartburn, and stomach upset."
+      ],
+      "openfda": {
+        "rxcui": ["5640"],
+        "generic_name": ["IBUPROFEN"],
+        "brand_name": ["Ibuprofen"]
+      }
+    }
+  ]
+}
