@@ -167,6 +167,30 @@ Response shape (sketch):
   - Account management (change password, delete account).
   - Move sessions/accounts to a shared store (Redis/Postgres) if scaling beyond a single host.
 
+- **M7 — Split into Next.js frontend + API-only backend ✅ (done, 2026-06)**: separate the UI from the API so the frontend can evolve independently, replacing the server-rendered Jinja2 pages with a Next.js app.
+
+  **Requirements**
+  - Monorepo: backend moves to `backend/`, a new Next.js app lives in `frontend/`.
+  - Backend becomes a **JSON API** (no server-rendered HTML); all UI is in the frontend.
+  - Reuse the existing cookie-session auth (don't rewrite to tokens).
+  - Feature parity: name search, gated symptom search, register/login/logout, disclaimers, emergency handling, adverse events.
+
+  **Design decisions**
+  - **Frontend stack:** Next.js (App Router) + TypeScript + Tailwind CSS — the modern `create-next-app` defaults.
+  - **Frontend ↔ backend:** Next.js **rewrites proxy** `/api/*` → `BACKEND_URL`, so the signed session cookie stays same-origin. Chosen over JWT (no token logic / XSS exposure) and over direct CORS+cross-site cookies (fiddly `SameSite=None`/HTTPS in dev). CORS is still configured (`CORS_ORIGINS`) for the direct-call option.
+  - **Backend auth → JSON:** `/auth/register` (201), `/auth/login` (200), `/auth/logout` (204), `/auth/me` (200/401), replacing the form/redirect routes. Hashing, SQLite storage, and `SessionMiddleware` are unchanged from M6.
+  - **Removed:** Jinja2 templates + static JS/CSS, and the `jinja2` / `python-multipart` deps.
+
+  **Surface added**
+  - `frontend/`: App Router pages (`/`, `/symptoms`, `/login`, `/register`), `lib/api.ts` (typed fetch client), `lib/auth.tsx` (`AuthProvider`/`useAuth`), shared components, `next.config.mjs` proxy, Tailwind. `types.ts` mirrors the backend Pydantic models.
+  - `backend/`: CORS middleware, `AuthRequest`/`UserResponse` schemas, `CORS_ORIGINS` config.
+  - CI: two jobs — backend (ruff + pytest) and frontend (`npm ci` + lint + build).
+
+  **Follow-ups (not in scope yet)**
+  - Containerize the frontend / add a `docker-compose` for one-command local up.
+  - Server-side route protection for `/symptoms` (currently gated client-side; the API is the real gate).
+  - Shared types generated from the backend OpenAPI schema instead of a hand-kept `types.ts`.
+
 ---
 
 ## Open questions

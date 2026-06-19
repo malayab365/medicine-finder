@@ -1,50 +1,57 @@
 #!/usr/bin/env bash
 #
-# Start the Medicine Search app.
+# Start the whole app: FastAPI backend (:8000) + Next.js frontend (:3000).
 #
-#   ./start.sh                 # run on http://127.0.0.1:8000 with auto-reload
-#   HOST=0.0.0.0 PORT=9000 ./start.sh
-#   ./start.sh --no-reload     # run without the reloader (closer to production)
+#   ./start.sh                                  # run both, Ctrl-C stops both
+#   BACKEND_PORT=9000 FRONTEND_PORT=4000 ./start.sh
 #
-# On first run it creates a .venv, installs dependencies, and seeds .env from
-# .env.example. Symptom search needs OPENROUTER_API_KEY set in .env.
+# The backend's own start.sh handles its venv/.env on first run; this script
+# installs frontend deps and seeds frontend/.env.local if needed. Symptom search
+# needs OPENROUTER_API_KEY in backend/.env.
 
 set -euo pipefail
 
 cd "$(dirname "$0")"
+ROOT="$(pwd)"
 
-HOST="${HOST:-127.0.0.1}"
-PORT="${PORT:-8000}"
-RELOAD="--reload"
-if [[ "${1:-}" == "--no-reload" ]]; then
-  RELOAD=""
+BACKEND_PORT="${BACKEND_PORT:-8000}"
+FRONTEND_PORT="${FRONTEND_PORT:-3000}"
+
+pids=()
+cleaned=0
+cleanup() {
+  [[ "${cleaned}" == "1" ]] && return
+  cleaned=1
+  echo ""
+  echo "==> Shutting down…"
+  for pid in "${pids[@]}"; do
+    kill "${pid}" 2>/dev/null || true
+  done
+  wait 2>/dev/null || true
+}
+trap cleanup INT TERM EXIT
+
+# --- Backend -------------------------------------------------------------
+echo "==> Starting backend on http://127.0.0.1:${BACKEND_PORT}"
+( cd "${ROOT}/backend" && PORT="${BACKEND_PORT}" ./start.sh ) &
+pids+=($!)
+
+# --- Frontend ------------------------------------------------------------
+cd "${ROOT}/frontend"
+if [[ ! -d node_modules ]]; then
+  echo "==> Installing frontend dependencies"
+  npm install
 fi
-
-# 1. Virtual environment + dependencies (only set up once).
-if [[ ! -d .venv ]]; then
-  echo "==> Creating virtual environment (.venv)"
-  python3 -m venv .venv
+if [[ ! -f .env.local ]]; then
+  echo "==> Seeding frontend/.env.local"
+  cp .env.local.example .env.local
 fi
-# shellcheck disable=SC1091
-source .venv/bin/activate
+echo "==> Starting frontend on http://localhost:${FRONTEND_PORT}"
+BACKEND_URL="http://localhost:${BACKEND_PORT}" npm run dev -- --port "${FRONTEND_PORT}" &
+pids+=($!)
 
-if ! python -c "import uvicorn" >/dev/null 2>&1; then
-  echo "==> Installing dependencies"
-  pip install --quiet --upgrade pip
-  pip install --quiet -e ".[dev]"
-fi
-
-# 2. Environment file.
-if [[ ! -f .env ]]; then
-  echo "==> No .env found; creating one from .env.example"
-  cp .env.example .env
-fi
-
-if ! grep -qE '^OPENROUTER_API_KEY=.+' .env; then
-  echo "!!  OPENROUTER_API_KEY is not set in .env — name search works, but"
-  echo "!!  symptom search will fail until you add a key."
-fi
-
-# 3. Launch.
-echo "==> Starting on http://${HOST}:${PORT} (Ctrl-C to stop)"
-exec uvicorn app.main:app --host "${HOST}" --port "${PORT}" ${RELOAD}
+cd "${ROOT}"
+echo ""
+echo "==> Up. Frontend: http://localhost:${FRONTEND_PORT}  ·  API: http://localhost:${BACKEND_PORT}"
+echo "==> Press Ctrl-C to stop both."
+wait
