@@ -1,10 +1,9 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
+from typing import Annotated
 
-from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import auth, db
@@ -12,17 +11,17 @@ from app.config import settings
 from app.ratelimit import FixedWindowRateLimiter
 from app.schemas import (
     EMERGENCY_MESSAGE,
+    AuthRequest,
     Candidate,
     NameSearchRequest,
     NameSearchResponse,
     SymptomSearchRequest,
     SymptomSearchResponse,
+    UserResponse,
 )
 from app.services.openfda import fetch_adverse_events, fetch_label
 from app.services.rxnorm import normalize_name
 from app.services.triage import is_emergency, triage
-
-BASE_DIR = Path(__file__).resolve().parent
 
 
 @asynccontextmanager
@@ -31,10 +30,19 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Medicine Search", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Medicine Search API", version="0.2.0", lifespan=lifespan)
+
+# Cross-origin support for the Next.js frontend. With the dev proxy (Next.js
+# rewrites) requests are same-origin and this isn't strictly needed, but it keeps
+# direct cross-origin calls working too. Credentials are required for the cookie.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
-app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 name_limiter = FixedWindowRateLimiter(limit=settings.name_rate_limit_per_minute)
 symptom_limiter = FixedWindowRateLimiter(limit=settings.symptom_rate_limit_per_minute)
@@ -65,77 +73,40 @@ async def robots() -> str:
     return "User-agent: *\nDisallow: /\n"
 
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request) -> HTMLResponse:
-    user = auth.current_user(request)
-    return templates.TemplateResponse(request, "index.html", {"user": user})
+# --- Auth (JSON) ---------------------------------------------------------
 
 
-# --- Auth ----------------------------------------------------------------
-
-
-@app.get("/register", response_class=HTMLResponse)
-async def register_form(request: Request) -> HTMLResponse:
-    if auth.current_user(request):
-        return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse(request, "register.html", {"user": None})
-
-
-@app.post("/register")
-async def register(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    confirm: str = Form(...),
-):
-    error = auth.validate_credentials(username, password)
-    if not error and password != confirm:
-        error = "Passwords do not match."
-    if not error:
-        try:
-            user = auth.register_user(username, password)
-        except ValueError as exc:
-            error = str(exc)
+@app.post("/auth/register", response_model=UserResponse, status_code=201)
+async def register(req: AuthRequest, request: Request) -> UserResponse:
+    error = auth.validate_credentials(req.username, req.password)
     if error:
-        return templates.TemplateResponse(
-            request,
-            "register.html",
-            {"user": None, "error": error, "username": username},
-            status_code=400,
-        )
+        raise HTTPException(status_code=400, detail=error)
+    try:
+        user = auth.register_user(req.username, req.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     request.session["user_id"] = user["id"]
-    return RedirectResponse("/", status_code=303)
+    return UserResponse(id=user["id"], username=user["username"])
 
 
-@app.get("/login", response_class=HTMLResponse)
-async def login_form(request: Request) -> HTMLResponse:
-    if auth.current_user(request):
-        return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse(request, "login.html", {"user": None})
-
-
-@app.post("/login")
-async def login(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-):
-    user = auth.authenticate(username, password)
+@app.post("/auth/login", response_model=UserResponse)
+async def login(req: AuthRequest, request: Request) -> UserResponse:
+    user = auth.authenticate(req.username, req.password)
     if user is None:
-        return templates.TemplateResponse(
-            request,
-            "login.html",
-            {"user": None, "error": "Invalid username or password.", "username": username},
-            status_code=400,
-        )
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
     request.session["user_id"] = user["id"]
-    return RedirectResponse("/", status_code=303)
+    return UserResponse(id=user["id"], username=user["username"])
 
 
-@app.post("/logout")
-async def logout(request: Request):
+@app.post("/auth/logout", status_code=204)
+async def logout(request: Request) -> Response:
     request.session.clear()
-    return RedirectResponse("/", status_code=303)
+    return Response(status_code=204)
+
+
+@app.get("/auth/me", response_model=UserResponse)
+async def me(user: Annotated[dict, Depends(auth.require_user)]) -> UserResponse:
+    return UserResponse(id=user["id"], username=user["username"])
 
 
 # --- Search --------------------------------------------------------------

@@ -20,11 +20,8 @@ def load_fixture(name: str) -> dict:
 
 def register_and_login(client, username: str = "tester", password: str = "password123"):
     """Register a user on the given TestClient; its cookie jar holds the session."""
-    resp = client.post(
-        "/register",
-        data={"username": username, "password": password, "confirm": password},
-    )
-    assert resp.status_code == 200  # followed 303 redirect to "/"
+    resp = client.post("/auth/register", json={"username": username, "password": password})
+    assert resp.status_code == 201
     return client
 
 

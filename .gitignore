@@ -15,6 +15,12 @@ venv/
 *.db
 *.db-journal
 
+# Node / Next.js (frontend)
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
 # OS / IDE
 .DS_Store
 .vscode/

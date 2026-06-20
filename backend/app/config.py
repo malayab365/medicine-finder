@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     database_path: str = "medicine_search.db"
     # Signs the session cookie. MUST be overridden in production via SESSION_SECRET.
     session_secret: str = "dev-insecure-change-me"
+    # Comma-separated origins allowed to call the API with credentials (the
+    # Next.js frontend). Used by CORS; the dev proxy makes calls same-origin anyway.
+    cors_origins: str = "http://localhost:3000"
     # Per-client (IP) request caps per minute. Symptom search calls a paid LLM, so
     # it's stricter than the name lookup.
     name_rate_limit_per_minute: int = 60
