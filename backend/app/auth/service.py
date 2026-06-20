@@ -1,12 +1,11 @@
 """Account use-cases: input validation, registration, and authentication.
 
-Sits between the router and the storage/security layers. Returns plain user
-rows from the repository; the router maps those to response schemas.
+Sits between the router and the storage/security layers. Returns typed `User`
+objects from the repository; the router maps those to response schemas. Depends
+only on the `UserRepository` Protocol, never on the storage engine.
 """
 
-import sqlite3
-
-from app.auth import repository
+from app.auth.repository import User, UsernameTakenError, users
 from app.auth.security import hash_password, verify_password
 
 MIN_USERNAME_LEN = 3
@@ -25,17 +24,17 @@ def validate_credentials(username: str, password: str) -> str | None:
     return None
 
 
-def register_user(username: str, password: str) -> sqlite3.Row:
+def register_user(username: str, password: str) -> User:
     """Create a user. Raises ValueError if the username is already taken."""
     try:
-        return repository.create_user(username.strip(), hash_password(password))
-    except sqlite3.IntegrityError as exc:
+        return users.create_user(username.strip(), hash_password(password))
+    except UsernameTakenError as exc:
         raise ValueError("That username is already taken.") from exc
 
 
-def authenticate(username: str, password: str) -> sqlite3.Row | None:
-    """Return the user row if credentials are valid, else None."""
-    user = repository.get_user_by_username(username.strip())
-    if user is None or not verify_password(password, user["password_hash"]):
+def authenticate(username: str, password: str) -> User | None:
+    """Return the user if credentials are valid, else None."""
+    user = users.get_user_by_username(username.strip())
+    if user is None or not verify_password(password, user.password_hash):
         return None
     return user
