@@ -1,6 +1,6 @@
 import httpx
 
-from app.services.rxnorm import normalize_name
+from app.medicines.providers.rxnorm import normalize_name
 from tests.conftest import load_fixture
 
 

@@ -1,4 +1,4 @@
-from app.cache import async_lru_cache
+from app.shared.cache import async_lru_cache
 
 
 async def test_caches_result_and_skips_second_call():

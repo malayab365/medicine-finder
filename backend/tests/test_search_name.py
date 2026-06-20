@@ -1,8 +1,9 @@
 from fastapi.testclient import TestClient
 
 import app.main as main
-from app.schemas import AdverseEvent, Label
-from app.services.rxnorm import RxNormMatch
+from app.medicines import service as search
+from app.medicines.providers.rxnorm import RxNormMatch
+from app.medicines.schemas import AdverseEvent, Label
 
 client = TestClient(main.app)
 
@@ -18,9 +19,9 @@ def test_search_name_returns_label(monkeypatch):
     async def fake_events(*, rxcui=None, name=None, **kwargs):
         return [AdverseEvent(term="Nausea", count=5321)]
 
-    monkeypatch.setattr(main, "normalize_name", fake_normalize)
-    monkeypatch.setattr(main, "fetch_label", fake_fetch)
-    monkeypatch.setattr(main, "fetch_adverse_events", fake_events)
+    monkeypatch.setattr(search, "normalize_name", fake_normalize)
+    monkeypatch.setattr(search, "fetch_label", fake_fetch)
+    monkeypatch.setattr(search, "fetch_adverse_events", fake_events)
 
     response = client.post("/search/name", json={"query": "ibuprofen"})
 
@@ -43,9 +44,9 @@ def test_search_name_no_match(monkeypatch):
     async def fake_events(*, rxcui=None, name=None, **kwargs):
         return []
 
-    monkeypatch.setattr(main, "normalize_name", fake_normalize)
-    monkeypatch.setattr(main, "fetch_label", fake_fetch)
-    monkeypatch.setattr(main, "fetch_adverse_events", fake_events)
+    monkeypatch.setattr(search, "normalize_name", fake_normalize)
+    monkeypatch.setattr(search, "fetch_label", fake_fetch)
+    monkeypatch.setattr(search, "fetch_adverse_events", fake_events)
 
     response = client.post("/search/name", json={"query": "zzzzz"})
 

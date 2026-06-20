@@ -1,6 +1,6 @@
 import httpx
 
-from app.services.openfda import fetch_adverse_events, fetch_label
+from app.medicines.providers.openfda import fetch_adverse_events, fetch_label
 from tests.conftest import load_fixture
 
 

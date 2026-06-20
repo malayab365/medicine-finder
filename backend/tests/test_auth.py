@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 import app.main as main
-from app.auth import hash_password, verify_password
+from app.auth.security import hash_password, verify_password
 
 client = TestClient(main.app)
 
