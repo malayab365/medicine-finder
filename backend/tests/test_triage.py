@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.services.triage import is_emergency, triage
+from app.medicines.providers.triage import is_emergency, triage
 
 
 def _fake_client(content: str) -> AsyncMock:

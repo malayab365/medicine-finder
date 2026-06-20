@@ -1,7 +1,9 @@
 from fastapi.testclient import TestClient
 
 import app.main as main
-from app.ratelimit import FixedWindowRateLimiter
+from app.medicines import router as medicines_router
+from app.medicines import service as search
+from app.shared.ratelimit import FixedWindowRateLimiter
 from tests.conftest import register_and_login
 
 client = TestClient(main.app)
@@ -31,12 +33,12 @@ def test_window_resets_after_expiry():
 
 def test_symptom_endpoint_returns_429_over_limit(monkeypatch):
     async def fake_triage(symptoms, **kwargs):
-        from app.services.triage import TriageResult
+        from app.medicines.providers.triage import TriageResult
 
         return TriageResult(candidates=[])
 
-    monkeypatch.setattr(main, "triage", fake_triage)
-    monkeypatch.setattr(main.symptom_limiter, "limit", 2)
+    monkeypatch.setattr(search, "triage", fake_triage)
+    monkeypatch.setattr(medicines_router.symptom_limiter, "limit", 2)
     register_and_login(client)
 
     payloads = {"symptoms": "mild headache"}

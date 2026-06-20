@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 import httpx
 
-from app.cache import async_lru_cache
-from app.config import settings
+from app.core.config import settings
+from app.shared.cache import async_lru_cache
 
 
 @dataclass

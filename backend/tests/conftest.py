@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-import app.db as db
-import app.main as main
-from app.config import settings
-from app.services.openfda import fetch_adverse_events, fetch_label
-from app.services.rxnorm import normalize_name
+from app.auth import repository as db
+from app.core.config import settings
+from app.medicines import router as medicines_router
+from app.medicines.providers.openfda import fetch_adverse_events, fetch_label
+from app.medicines.providers.rxnorm import normalize_name
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -42,7 +42,7 @@ def _clear_service_state():
     normalize_name.cache_clear()
     fetch_label.cache_clear()
     fetch_adverse_events.cache_clear()
-    main.name_limiter.reset()
-    main.symptom_limiter.reset()
+    medicines_router.name_limiter.reset()
+    medicines_router.symptom_limiter.reset()
     db.reset_users()
     yield

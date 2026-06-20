@@ -2,9 +2,9 @@
 
 import httpx
 
-from app.cache import async_lru_cache
-from app.config import settings
-from app.schemas import AdverseEvent, Label
+from app.core.config import settings
+from app.medicines.schemas import AdverseEvent, Label
+from app.shared.cache import async_lru_cache
 
 
 def _first(value: list[str] | None) -> str | None:

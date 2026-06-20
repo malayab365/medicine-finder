@@ -9,7 +9,7 @@ traffic grows.
 import sqlite3
 from contextlib import contextmanager
 
-from app.config import settings
+from app.core.config import settings
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (

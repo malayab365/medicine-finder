@@ -1,9 +1,10 @@
 from fastapi.testclient import TestClient
 
 import app.main as main
-from app.schemas import Label
-from app.services.rxnorm import RxNormMatch
-from app.services.triage import TriageResult
+from app.medicines import service as search
+from app.medicines.providers.rxnorm import RxNormMatch
+from app.medicines.providers.triage import TriageResult
+from app.medicines.schemas import Label
 from tests.conftest import register_and_login
 
 client = TestClient(main.app)
@@ -20,7 +21,7 @@ def test_emergency_keyword_short_circuits_before_llm(monkeypatch):
     async def boom(*args, **kwargs):
         raise AssertionError("triage must not be called for emergency input")
 
-    monkeypatch.setattr(main, "triage", boom)
+    monkeypatch.setattr(search, "triage", boom)
 
     response = client.post("/search/symptom", json={"symptoms": "I have severe chest pain"})
 
@@ -45,9 +46,9 @@ def test_symptom_search_returns_candidates_with_labels(monkeypatch):
     async def fake_fetch(*, rxcui=None, name=None, **kwargs):
         return Label(indications="Pain and fever relief.", dosage="1 tablet.")
 
-    monkeypatch.setattr(main, "triage", fake_triage)
-    monkeypatch.setattr(main, "normalize_name", fake_normalize)
-    monkeypatch.setattr(main, "fetch_label", fake_fetch)
+    monkeypatch.setattr(search, "triage", fake_triage)
+    monkeypatch.setattr(search, "normalize_name", fake_normalize)
+    monkeypatch.setattr(search, "fetch_label", fake_fetch)
 
     response = client.post("/search/symptom", json={"symptoms": "mild headache and fever"})
 
@@ -68,7 +69,7 @@ def test_symptom_search_respects_llm_emergency_flag(monkeypatch):
     async def fake_triage(symptoms, **kwargs):
         return TriageResult(emergency=True)
 
-    monkeypatch.setattr(main, "triage", fake_triage)
+    monkeypatch.setattr(search, "triage", fake_triage)
 
     response = client.post("/search/symptom", json={"symptoms": "vague but worrying symptom"})
 
