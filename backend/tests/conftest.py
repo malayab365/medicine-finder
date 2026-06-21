@@ -9,7 +9,7 @@ from app.auth import repository as db
 from app.core.config import settings
 from app.medicines import router as medicines_router
 from app.medicines.providers.openfda import fetch_adverse_events, fetch_label
-from app.medicines.providers.rxnorm import normalize_name
+from app.medicines.providers.rxnorm import _load_display_names, normalize_name
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -40,9 +40,11 @@ def _test_db():
 def _clear_service_state():
     """Keep cached results, rate-limit counters, and users from leaking across tests."""
     normalize_name.cache_clear()
+    _load_display_names.cache_clear()
     fetch_label.cache_clear()
     fetch_adverse_events.cache_clear()
     medicines_router.name_limiter.reset()
     medicines_router.symptom_limiter.reset()
+    medicines_router.suggest_limiter.reset()
     db.reset_users()
     yield
