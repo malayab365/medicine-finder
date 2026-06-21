@@ -52,3 +52,46 @@ async def normalize_name(
     finally:
         if own_client:
             await client.aclose()
+
+
+@async_lru_cache(maxsize=1)
+async def _load_display_names(*, client: httpx.AsyncClient | None = None) -> tuple[str, ...]:
+    """Fetch RxNorm's full display-name list once (what RxNav's own autocomplete uses).
+
+    It's ~28k clean drug names in a single response, so we pull it once and cache
+    it in-process, then prefix-filter locally per keystroke rather than hitting
+    RxNorm on every request.
+    """
+    own_client = client is None
+    client = client or httpx.AsyncClient(base_url=settings.rxnorm_base_url, timeout=10.0)
+    try:
+        r = await client.get("/displaynames.json")
+        r.raise_for_status()
+        terms = r.json().get("displayTermsList", {}).get("term") or []
+        return tuple(terms)
+    finally:
+        if own_client:
+            await client.aclose()
+
+
+async def suggest_names(
+    prefix: str, *, limit: int = 10, client: httpx.AsyncClient | None = None
+) -> list[str]:
+    """Autocomplete drug names: prefix matches first, then other substring matches."""
+    prefix = prefix.strip().lower()
+    if not prefix:
+        return []
+    terms = await _load_display_names(client=client)
+    starts: list[str] = []
+    contains: list[str] = []
+    for term in terms:
+        lowered = term.lower()
+        if lowered.startswith(prefix):
+            starts.append(term)
+        elif prefix in lowered:
+            contains.append(term)
+    # Shorter names first surfaces the plain ingredient ("ibuprofen") ahead of its
+    # combination products ("ibuprofen / pseudoephedrine"); ties broken alphabetically.
+    starts.sort(key=lambda t: (len(t), t.lower()))
+    contains.sort(key=lambda t: (len(t), t.lower()))
+    return (starts + contains)[:limit]

@@ -7,6 +7,10 @@ class NameSearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=200)
 
 
+class SuggestResponse(BaseModel):
+    suggestions: list[str] = []
+
+
 class Label(BaseModel):
     indications: str | None = None
     dosage: str | None = None

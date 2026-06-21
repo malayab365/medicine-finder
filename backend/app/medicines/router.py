@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.auth.deps import require_user
 from app.core.clients import Clients, get_clients
@@ -11,6 +11,7 @@ from app.medicines import service
 from app.medicines.schemas import (
     NameSearchRequest,
     NameSearchResponse,
+    SuggestResponse,
     SymptomSearchRequest,
     SymptomSearchResponse,
 )
@@ -20,6 +21,7 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 name_limiter = FixedWindowRateLimiter(limit=settings.name_rate_limit_per_minute)
 symptom_limiter = FixedWindowRateLimiter(limit=settings.symptom_rate_limit_per_minute)
+suggest_limiter = FixedWindowRateLimiter(limit=settings.suggest_rate_limit_per_minute)
 
 
 @router.post(
@@ -31,6 +33,18 @@ async def search_name(
     req: NameSearchRequest, clients: Annotated[Clients, Depends(get_clients)]
 ) -> NameSearchResponse:
     return await service.search_by_name(req.query, clients)
+
+
+@router.get(
+    "/suggest",
+    response_model=SuggestResponse,
+    dependencies=[Depends(rate_limit(suggest_limiter))],
+)
+async def suggest_name(
+    clients: Annotated[Clients, Depends(get_clients)],
+    q: Annotated[str, Query(max_length=200)] = "",
+) -> SuggestResponse:
+    return SuggestResponse(suggestions=await service.get_suggestions(q, clients))
 
 
 @router.post(

@@ -1,6 +1,6 @@
 import httpx
 
-from app.medicines.providers.rxnorm import normalize_name
+from app.medicines.providers.rxnorm import normalize_name, suggest_names
 from tests.conftest import load_fixture
 
 
@@ -54,3 +54,26 @@ async def test_normalize_name_no_match():
         match = await normalize_name("zzzz", client=client)
 
     assert match is None
+
+
+async def test_suggest_names_orders_prefix_before_substring():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/displaynames.json"):
+            return httpx.Response(200, json=load_fixture("rxnorm_displaynames.json"))
+        return httpx.Response(404)
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        out = await suggest_names("ibu", client=client)
+
+    # Prefix matches first (shorter ingredient before its combo), then substring.
+    assert out == ["ibuprofen", "ibuprofen / pseudoephedrine", "Children's Ibuprofen"]
+
+
+async def test_suggest_names_blank_query_skips_fetch():
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("should not call RxNorm for a blank prefix")
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        assert await suggest_names("   ", client=client) == []

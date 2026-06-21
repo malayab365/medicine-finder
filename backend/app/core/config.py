@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     # it's stricter than the name lookup.
     name_rate_limit_per_minute: int = 60
     symptom_rate_limit_per_minute: int = 15
+    # Autocomplete fires several requests per search but is served from an
+    # in-memory list (no upstream call per keystroke), so it can be generous.
+    suggest_rate_limit_per_minute: int = 120
 
 
 settings = Settings()

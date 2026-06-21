@@ -138,7 +138,7 @@ Response shape (sketch):
 - **M2 — Name search (1 day)**: `rxnorm.py` + `openfda.py` + `/search/name` + result template. Includes fixtures and tests.
 - **M3 — Symptom search (1 day)**: `triage.py` + Claude integration + emergency guard + `/search/symptom`.
 - **M4 — Polish (½ day)**: caching, error states, disclaimer banner, deploy doc.
-- **M5 — Stretch**: ~~drug-interaction check between two drugs (RxNav interaction API)~~ (see note), recent adverse-event counts ✅ (done — OpenFDA `/drug/event.json`, shown on the name result), autocomplete on the name field.
+- **M5 — Stretch**: ~~drug-interaction check between two drugs (RxNav interaction API)~~ (see note), recent adverse-event counts ✅ (done — OpenFDA `/drug/event.json`, shown on the name result), autocomplete on the name field ✅ (done, 2026-06 — `GET /search/suggest` prefix-filters RxNorm's cached `displaynames` list; the name field shows a debounced, keyboard-navigable dropdown).
 
   > **Note (2026-06):** NLM **retired the RxNav drug-interaction API in January 2024**, so the interaction-check idea is no longer viable as specified. If we still want interaction checks, we'd need a different source (e.g. a licensed dataset or DDInter) — treat it as a fresh design question, not a quick stretch task.
 

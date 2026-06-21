@@ -21,6 +21,10 @@ export interface NameSearchResponse {
   disclaimer: string;
 }
 
+export interface SuggestResponse {
+  suggestions: string[];
+}
+
 export interface Candidate {
   name: string;
   matched_name: string | null;

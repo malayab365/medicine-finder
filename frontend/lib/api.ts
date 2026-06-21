@@ -2,7 +2,12 @@
 // proxies to FastAPI (see next.config.mjs), keeping the session cookie
 // same-origin. `credentials: "include"` ensures the cookie rides along.
 
-import type { NameSearchResponse, SymptomSearchResponse, User } from "@/types";
+import type {
+  NameSearchResponse,
+  SuggestResponse,
+  SymptomSearchResponse,
+  User,
+} from "@/types";
 
 export class ApiError extends Error {
   status: number;
@@ -43,6 +48,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function searchName(query: string): Promise<NameSearchResponse> {
   return request("/search/name", { method: "POST", body: JSON.stringify({ query }) });
+}
+
+export function suggestNames(query: string): Promise<SuggestResponse> {
+  return request(`/search/suggest?q=${encodeURIComponent(query)}`, { method: "GET" });
 }
 
 export function searchSymptom(symptoms: string): Promise<SymptomSearchResponse> {

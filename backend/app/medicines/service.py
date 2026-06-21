@@ -13,7 +13,7 @@ import asyncio
 
 from app.core.clients import Clients
 from app.medicines.providers.openfda import fetch_adverse_events, fetch_label
-from app.medicines.providers.rxnorm import normalize_name
+from app.medicines.providers.rxnorm import normalize_name, suggest_names
 from app.medicines.providers.triage import is_emergency, triage
 from app.medicines.schemas import (
     EMERGENCY_MESSAGE,
@@ -38,6 +38,10 @@ async def search_by_name(query: str, clients: Clients) -> NameSearchResponse:
         label=label,
         adverse_events=adverse_events,
     )
+
+
+async def get_suggestions(query: str, clients: Clients, *, limit: int = 10) -> list[str]:
+    return await suggest_names(query, limit=limit, client=clients.rxnorm)
 
 
 async def _resolve_candidate(name: str, clients: Clients) -> Candidate:
