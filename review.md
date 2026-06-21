@@ -8,8 +8,8 @@
 
 ## Implementation status
 
-- **Done:** B1 (thread-safe rate limiter), B3 (logging config), C1 (shared httpx/OpenAI clients), A2 (service layer), C2 (parallel candidate resolution), **A1 (feature-module split)**.
-- **Still open:** A3 (repository interface/`Protocol`), B2 (proxy-aware rate-limit key), B4 (evict stale limiter keys), D1–D3 (cookie hardening, login timing, validation dedup), plus the E nits.
+- **Done:** B1 (thread-safe rate limiter), B3 (logging config), C1 (shared httpx/OpenAI clients), A2 (service layer), C2 (parallel candidate resolution), A1 (feature-module split), **A3 (repository interface/`Protocol`)**.
+- **Still open:** B2 (proxy-aware rate-limit key), B4 (evict stale limiter keys), D1–D3 (cookie hardening, login timing, validation dedup), plus the E nits.
 
 The package now follows the feature-module layout below — `core/` (config, logging, clients, middleware), `shared/` (cache, ratelimit), `auth/` (security, repository, service, deps, schemas, router), `medicines/` (providers/, schemas, service, router), `system.py`, and a ~15-line `main.py` composition root. Adding a feature = new package + one `include_router` line.
 
